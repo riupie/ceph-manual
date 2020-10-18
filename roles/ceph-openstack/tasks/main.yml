@@ -1,0 +1,3 @@
+---
+- import_tasks: ceph-openstack.yml
+  when: create_openstack_pool == "true"

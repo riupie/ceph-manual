@@ -1,0 +1,178 @@
+---
+- hosts: monitor[0]
+  vars_files: ../group_vars/all.yml
+  become: true
+  tasks:
+    - name: Check if ceph.conf exists
+      stat:
+        path: /etc/ceph/ceph.conf
+      register: ceph_conf
+      tags: osd
+
+    - name: Down all OSD
+      shell: "ceph osd down all"
+      when: ceph_conf.stat.exists
+      ignore_errors: yes
+      become_user: root
+      tags: osd
+
+    - name: Get osd list
+      shell: "ceph osd ls"
+      register: list_osd
+      when: ceph_conf.stat.exists
+      tags: osd
+
+    - name: Purge all osd
+      shell: "ceph osd purge {{ item }} --yes-i-really-mean-it"
+      with_items: "{{ list_osd.stdout_lines }}"
+      when: ceph_conf.stat.exists
+      tags: osd
+
+- hosts: osd
+  vars_files: ../group_vars/all.yml
+  become: true
+  tasks:
+    - name: Install gdisk
+      apt: 
+        name: gdisk
+        state: latest
+
+    - name: Zap all disk used by osd before with sgdisk
+      shell: sgdisk -Z {{ item.data }} && sgdisk -Z {{ item.waldb }}
+      become_user: root
+      with_items:
+        - "{{ devices }}"
+      when: item.waldb is defined
+      tags: osd
+
+    - name: Zap all disk used by osd before with sgdisk
+      become_user: root
+      command: sgdisk -Z {{ item.data }}
+      with_items:
+        - "{{ devices }}"
+      when: item.waldb is not defined
+      tags: osd
+
+      #    - name: Zap all disk used by osd before with ceph-volume
+      #      command: ceph-volume lvm zap {{ item.data }} --destroy
+      #      with_items:
+      #        - "{{ devices }}"
+      #      become_user: root
+      #      ignore_errors: yes
+      #      when: item.waldb is not defined
+      #      tags: osd
+
+      #    - name: Zap all disk used by osd before with ceph-volume
+      #      shell: ceph-volume lvm zap {{ item.data }} --destroy && ceph-volume lvm zap {{ item.waldb }} --destroy
+      #      with_items:
+      #        - "{{ devices }}"
+      #      become_user: root
+      #      ignore_errors: yes
+      #      when: item.waldb is defined
+      #      tags: osd
+
+    - name: Umount all mounted disk
+      shell: "umount -l /var/lib/ceph/osd/*"
+      ignore_errors: yes
+      become_user: root
+      tags: osd
+
+    - name: Kill all ceph process
+      command: pkill ceph
+      become_user: root
+      tags: osd
+
+    - name: Clean all osd
+      command: dmsetup remove_all -f
+      become_user: root
+      tags: osd
+
+    - name: Clean folder osd
+      shell: "rm /var/lib/ceph/osd/* -rf "
+      become_user: root
+      tags: osd
+
+    - name: Clean folder osd
+      shell: "rm /var/lib/ceph/bootstrap-osd/* -rf "
+      become_user: root
+      tags: file
+
+    - name: Remove ceph config
+      shell: "rm /etc/ceph/* -rf"
+      become_user: root
+      tags: file
+
+    - name: Clean Temp
+      shell: "rm /tmp/ceph* -rf && rm /tmp/monmap -rf"
+      become_user: root
+      tags: file
+
+    - name: Refresh disk with Partprobe
+      shell: partprobe
+      become_user: root
+      tags: osd
+
+- hosts: osd
+  become: true
+  tasks:
+    - name: Remove ceph config
+      shell: "rm /etc/ceph/* -rf"
+      become_user: root
+      tags: file
+
+    - name: Clean Temp
+      shell: "rm /tmp/ceph* -rf && rm /tmp/monmap -rf"
+      become_user: root
+      tags: file
+
+- hosts: monitor
+  become: true
+  tasks:
+    - name: Clean folder mon
+      shell: "rm /var/lib/ceph/mon/* -rf"
+      become_user: root
+      tags: file
+
+- hosts: manager
+  become: true
+  tasks:
+    - name: Clean folder mgr
+      shell: "rm /var/lib/ceph/mgr/* -rf"
+      become_user: root
+      tags: file
+
+- hosts: osd
+  become: true
+  tasks:
+    - name: Stop all ceph services
+      shell: systemctl stop ceph@*
+      become_user: root
+      tags: osd
+
+    - name: Reload daemon
+      shell: systemctl daemon-reload
+      become_user: root
+      tags: osd
+
+- hosts: osd
+  vars_files: ../group_vars/all.yml
+  become: true
+  tasks:
+    - name: Zap all disk used by osd before with pvremove
+      shell: pvremove {{ item.data }} --force --force -y && pvremove {{ item.waldb }} --force --force -y
+      become_user: root
+      with_items:
+        - "{{ devices }}"
+      when: item.waldb is defined
+      tags: osd
+      ignore_errors: yes
+
+    - name: Zap all disk used by osd before with pvremove
+      command: pvremove {{ item.data }} --force --force -y
+      become_user: root
+      with_items:
+        - "{{ devices }}"
+      when: item.waldb is not defined
+      tags: osd
+      ignore_errors: yes
+

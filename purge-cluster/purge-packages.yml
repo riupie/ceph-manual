@@ -1,0 +1,29 @@
+- hosts: osd
+  become: yes
+  tasks:
+    - name: Uninstall ceph-mon
+      apt:
+        name: ceph-mon
+        state: absent
+      become_user: root
+
+    - name: Uninstall ceph-mgr
+      apt:
+        name: ceph-mgr
+        state: absent
+      become_user: root
+
+    - name: Uninstall ceph-osd
+      apt:
+        name: ceph-osd
+        state: absent
+      become_user: root
+
+    - name: Uninstall ceph
+      apt:
+        name: ceph
+        state: absent
+      become_user: root
+
+    - name: Ensure delete all ceph-* packages
+      shell: apt purge ceph-* -y && apt autoremove -y

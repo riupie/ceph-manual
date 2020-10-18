@@ -1,0 +1,50 @@
+ntp_pool: 0.id.pool.ntp.org
+
+# Default cluster name. Don't change if not needed.
+cluster_name: ceph
+
+# User to communicate between monitor nodes to other nodes.
+ceph_username: hci-adm
+ceph_password: rahasia
+
+# Ceph Dashboard user.
+ceph_dashboard_username: admin
+ceph_dashboard_password: admin@123
+
+# Enable Ceph Dashboard
+enable_dashboard: "yes"
+
+# If yes, it will generate /etc/hosts
+create_host_mapping: "yes"
+
+# If yes, it will install cloud-archive repository
+install_uca_repository: "yes"
+
+# Enable msgrv2 protocol for manager. Default value will enable this feature.
+enable_msgr2: "yes"
+
+# Ceph Network Setup
+public_storage_interface: ens4
+cluster_storage_interface: ens3
+public_storage_network: 10.41.41.0/24
+cluster_storage_network: 10.40.40.0/24
+
+# Ceph OSD Setup
+devices:
+  - data: "/dev/vdb"
+    waldb: "/dev/vdc"
+  - data: "/dev/vdd"
+    waldb: "/dev/vde"
+  - data: "/dev/vdf"
+  - data: "/dev/vdg"
+
+
+create_openstack_pool: "true"
+openstack_pool:
+  - name: volumes
+    pg: 32
+  - name: images
+    pg: 32
+  - name: vms 
+    pg: 32
+
